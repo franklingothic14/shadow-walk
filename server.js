@@ -10,18 +10,17 @@ app.use(cors());
 app.get('/api/shaded-route', async (req, res) => {
   const { from, to, time } = req.query;
   const apiKey = process.env.SHADEMAP_API_KEY;
-  const url = `https://api.shademap.app/v1/route?from=${from}&to=${to}&time=${time}`;
   try {
-    const response = await fetch(url, {
-      headers: { 'Authorization': apiKey }
+    const response = await fetch(`https://api.shademap.app/v1/route?from=${from}&to=${to}&time=${time}`, {
+      headers: { Authorization: apiKey }
     });
     const data = await response.json();
     res.json(data);
-  } catch (e) {
-    res.status(500).json({ error: e.toString() });
+  } catch (err) {
+    res.status(500).json({ error: 'API error', details: err.toString() });
   }
 });
 
-app.listen(process.env.PORT || 3000, () =>
-  console.log('Backend running')
-);
+app.listen(process.env.PORT || 3000, () => {
+  console.log('Server running');
+});
