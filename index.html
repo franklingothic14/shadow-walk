@@ -1,42 +1,69 @@
 <!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8">
-  <title>Shaded Route</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-  <style>#map{height:80vh;} #ctrl{padding:10px;}</style>
+<head>
+  <title>Shadow Walk</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body { margin:0; font-family:sans-serif; }
+    #map { height: 80vh; }
+    .controls { padding: 10px; display:flex; flex-direction: column; gap: 6px; }
+    input, button { padding: 8px; font-size: 1em; }
+  </style>
 </head>
 <body>
-<h2>Shaded Route</h2>
-<div id="map"></div>
-<div id="ctrl">
-  From: <input id="from" value="49.88,23.99"/>
-  To: <input id="to" value="49.89,24.01"/>
-  Time: <input id="time" type="datetime-local" value="2025-06-11T15:00"/>
-  <button id="go">Go</button>
-</div>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script>
-const apiUrl = 'https://YOUR_RAILWAY_URL/api/shaded-route';
+  <div class="controls">
+    <button id="locate">🎯 Моє місцезнаходження</button>
+    <input id="from" placeholder="Від (адреса або координати)" />
+    <input id="to" placeholder="До (адреса або клік на мапі)" />
+  </div>
+  <div id="map"></div>
 
-const map = L.map('map').setView([49.88,23.99],13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([49.88, 23.99], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-document.getElementById('go').onclick = async () => {
-  const [from, to, time] = [
-    document.getElementById('from').value,
-    document.getElementById('to').value,
-    new Date(document.getElementById('time').value).toISOString()
-  ];
-  const res = await fetch(`${apiUrl}?from=${from}&to=${to}&time=${time}`);
-  const d = await res.json();
-  console.log(d);
-  L.geoJSON(d.route, {
-    style: feat => ({
-      color: feat.properties.shaded ? 'green' : 'orange',
-      weight: 5
-    })
-  }).addTo(map);
-};
-</script>
+    let fromCoord = null, toCoord = null, routeLayer = null;
+
+    const fetchRoute = async () => {
+      if (!fromCoord || !toCoord) return;
+      const time = new Date().toISOString();
+      const url = `https://YOUR_BACKEND_URL/api/shaded-route?from=${fromCoord}&to=${toCoord}&time=${time}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (routeLayer) routeLayer.remove();
+      routeLayer = L.geoJSON(data.route, {
+        style: f => ({
+          color: f.properties.shaded ? 'green' : 'orange',
+          weight: 5
+        })
+      }).addTo(map);
+    };
+
+    document.getElementById('locate').onclick = () => {
+      navigator.geolocation.getCurrentPosition(pos => {
+        fromCoord = `${pos.coords.latitude},${pos.coords.longitude}`;
+        document.getElementById('from').value = fromCoord;
+        fetchRoute();
+      });
+    };
+
+    map.on('click', e => {
+      toCoord = `${e.latlng.lat},${e.latlng.lng}`;
+      document.getElementById('to').value = toCoord;
+      fetchRoute();
+    });
+
+    document.getElementById('from').onchange = e => {
+      fromCoord = e.target.value;
+      fetchRoute();
+    };
+
+    document.getElementById('to').onchange = e => {
+      toCoord = e.target.value;
+      fetchRoute();
+    };
+  </script>
 </body>
 </html>
